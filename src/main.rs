@@ -1,12 +1,8 @@
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_xml_rs;
+extern crate encoding_rs;
 
-use std::fs::File;
-use std::io::Read;
+use encoding_rs::WINDOWS_1251;
 
-use serde_xml_rs::from_reader;
+use std::fs;
 
 extern crate xmlJSON;
 extern crate rustc_serialize;
@@ -16,49 +12,18 @@ use rustc_serialize::json;
 use std::str::FromStr;
 use crate::rustc_serialize::json::ToJson;
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Envelope {
-    Header: Header,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Header {
-    // #[serde(rename(serialize = "Header", deserialize = "Header"))]
-
-    pub Header: String,
-    Security: Security,
-    //pub ВерсФорм: String,
-    //pub ИдДок: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Security {
-    pub actor: String,
-    BinarySecurityToken: BinarySecurityToken,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct BinarySecurityToken {
-    ValueType: String,
-    EncodingType: String,
-    Id: String,
-    #[serde(rename="$value")]
-    content: String,
-
-}
-
 
 fn main() {
-    let mut file = File::open("/home/konstantin/rust/xmltojson/result.xml").unwrap();
-    println!("{:#?}", file);
-    let mut buff = String::new();
-    file.read_to_string(&mut buff).unwrap();
-    //let level_data: Envelope = serde_xml_rs::from_str(&buff).unwrap();
-    let document : XmlDocument = XmlDocument::from_str(&buff).unwrap();
-    let level_data : json::Json = document.to_json();
-    println!("{:#?}", level_data);
+    let buff = fs::read("/home/konstantin/rust/xmltojson/VO_RUGFO_0000_9965_20190701_0fbed829-84be-4892-94ae-74242909726a.xml").expect("Unable to read file");
+    let (res, _enc, errors) = WINDOWS_1251.decode(&buff);
+    if errors {
+        eprintln!("Failed encode input file");
+    } else {
+        let document : XmlDocument = XmlDocument::from_str(&res.to_string()).unwrap();
+        let json_data : json::Json = document.to_json();
+        let json_str: String = json_data.to_string();
+        fs::write("/home/konstantin/rust/xmltojson/output.json", json_str).expect("Unable to write output file");
+    }
+
+
 }

@@ -15,7 +15,7 @@ use std::str::FromStr;
 use glob::{MatchOptions, glob_with};
 use std::convert::TryInto;
 
-const PATCH: &str = "/Users/konstantin/rust/xmltojson/*.xml";
+const PATCH: &str = "/home/konstantin/rust/xmltojson/*.xml";
 
 
 fn parse_xml_file_info(file: String) -> bool {
@@ -26,20 +26,20 @@ fn parse_xml_file_info(file: String) -> bool {
     let test2 = res.to_string();
     //println!("{}", test2);
 
-    let test = "<note type=\"Reminder\">
-                test
-            </note>";
+    //let test = "<note type=\"Reminder\">
+    //            test
+    //        </note>";
 
-    let data = XmlDocument::from_str(&test2).unwrap();
+    //let data = XmlDocument::from_str(&test2).unwrap();
     if errors {
         // println!("Failed encode input file");
     false
     } else {
 
-        //let data = XmlDocument::from_str(&test).unwrap();
+        let document = XmlDocument::from_str(&test2).unwrap();
 
         //let document : XmlDocument = XmlDocument::from_str(&res.to_string()).unwrap();
-        /*
+
         let json_data : json::Json = document.to_json();
         //let json_str: String = json_data.to_string();
         //fs::write("/home/konstantin/rust/xmltojson/output.json", json_str).expect("Unable to write output file");
@@ -57,8 +57,9 @@ fn parse_xml_file_info(file: String) -> bool {
         }
         let docs = file.get("Документ").unwrap();
         // println!("object? docs {}", docs.is_array());
-
+        //Panic this
         for item in docs.as_array().unwrap() {
+            /*
             for (key, value) in item.as_object().unwrap() {
                 println!("{}: {}", key, match *value {
                     Json::U64(v) => format!("{} (u64)", v),
@@ -66,13 +67,14 @@ fn parse_xml_file_info(file: String) -> bool {
                     _ => format!("other")
                 });
             }
+            */
             let body = item.as_object().unwrap().get("$").unwrap().as_object().unwrap();
             println!("{:#?}", body);
             let swyl = item.as_object().unwrap().get("СвЮЛ").unwrap().as_object().unwrap();
-            println!("{:#?}", swyl);
+            // println!("{:#?}", swyl);
             break;
         }
-    */
+
     true
     }
 

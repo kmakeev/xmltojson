@@ -15,7 +15,7 @@ use std::str::FromStr;
 use glob::{MatchOptions, glob_with};
 use std::convert::TryInto;
 
-const PATCH: &str = "/home/konstantin/rust/xmltojson/*.xml";
+const PATCH: &str = "/Users/konstantin/rust/xmltojson/*.xml";
 
 
 fn parse_xml_file_info(file: String) -> bool {
@@ -57,24 +57,34 @@ fn parse_xml_file_info(file: String) -> bool {
         }
         let docs = file.get("Документ").unwrap();
         // println!("object? docs {}", docs.is_array());
-        //Panic this
-        for item in docs.as_array().unwrap() {
-            /*
-            for (key, value) in item.as_object().unwrap() {
-                println!("{}: {}", key, match *value {
-                    Json::U64(v) => format!("{} (u64)", v),
-                    Json::String(ref v) => format!("{} (string)", v),
-                    _ => format!("other")
-                });
+        if docs.is_array() {
+            match docs.as_array() {
+                Some(docs) => {
+                    for item in docs {
+                        /*
+                        for (key, value) in item.as_object().unwrap() {
+                            println!("{}: {}", key, match *value {
+                                Json::U64(v) => format!("{} (u64)", v),
+                                Json::String(ref v) => format!("{} (string)", v),
+                                _ => format!("other")
+                            });
+                        }
+                        */
+                        let body = item.as_object().unwrap().get("$").unwrap().as_object().unwrap();
+                        println!("{:#?}", body);
+                        let swyl = item.as_object().unwrap().get("СвЮЛ").unwrap().as_object().unwrap();
+                        // println!("{:#?}", swyl);
+                        break;
+                    }
+                }
+                None => {
+                    println!("Error unwrap array docs in {:#?}", file);
+                }
             }
-            */
-            let body = item.as_object().unwrap().get("$").unwrap().as_object().unwrap();
+        } else {
+            let body = docs.as_object().unwrap().get("$").unwrap().as_object().unwrap();
             println!("{:#?}", body);
-            let swyl = item.as_object().unwrap().get("СвЮЛ").unwrap().as_object().unwrap();
-            // println!("{:#?}", swyl);
-            break;
         }
-
     true
     }
 

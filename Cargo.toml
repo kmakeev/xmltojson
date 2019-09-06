@@ -16,6 +16,12 @@ reql = "0.0.26"
 reql-types = "0.0.4"
 futures = "0.1.28"
 
+serde = "1"
+serde_json = "1"
+serde_derive = "1"
+
+ql2 = "1"
+
 [profile.dev]
 debug = true
 opt-level = 0

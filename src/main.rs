@@ -7,7 +7,8 @@ extern crate reql;
 extern crate reql_types;
 extern crate futures;
 
-
+extern crate serde_json;
+extern crate ql2;
 
 use rayon::prelude::*;
 use std::process::exit;
@@ -20,11 +21,17 @@ use std::str::FromStr;
 use glob::{MatchOptions, glob_with};
 use std::convert::TryInto;
 use reql::{Config, Client, Document, Run, Arg, IntoArg};
-use reql_types::ServerStatus;
+use reql_types::{ServerStatus, WriteStatus};
 use futures::{Stream, Join};
 
+use serde_json :: {Value};
+
+use ql2::proto::{Term, Term_AssocPair as TermPair};
 
 const PATCH: &str = "/Users/konstantin/rust/xmltojson/*.xml";
+const DATABASE: &str = "test";
+const FILE_TABLE: &str = "file";
+const DOCS_TABLE: &str = "docs";
 
 
 fn parse_xml_file_info(file: String) -> bool {
@@ -72,45 +79,35 @@ fn parse_xml_file_info(file: String) -> bool {
         // println!("Save json : {:?}", file);
 
         let body = file.get("$").unwrap().as_object().unwrap();
-        println!("Save json : {}", body.to_json().to_string());
-        /*
-        let statistic = r.db("rethinkdb")
-            .table("server_status")
-            .run::<ServerStatus>(conn);
+        // println!("Save json : {:?}", body.to_json());
 
-        match statistic.unwrap().wait().next().unwrap() {
-            // The server returned the response we were expecting
-            Ok(Some(Document::Expected(status))) => {
-                println!("{:?}", status);
-            }
-            Ok(Some(Document::Unexpected(status))) => {
-                println!("unexpected response from server: {:?}", status);
-            }
-            Ok(None) => {
-                println!("got no documents in the database");
-            }
-            // Oops! We ran into an error
-            Err(error) => {
-                println!("error: {}", error);
-            }
-        }
-        */
+        //let str_body = body.to_json().to_string().as_str();
+        // let data = r#"{"cmd": "askldjhfasdfa;sldkjfal;skdjflfeuiahfiuseh faiusehf asiuehf aiuseh f", "count": 0}"#;
+        // let mut arg = Arg::new();
 
-        let data = r#"{name: "Meri", age: 45, phones: ["1213123", "12ee1231"]}"#;
+        let obj: Value = serde_json::from_str(body.to_json().to_string().as_str()).unwrap();
+        println!("Save info about file with Id - {:#?}", obj["ИдФайл"]);
+        // println!("data - {:#?}", arg);
         let mut arg = Arg::new();
-        arg.set_string(data);
+        arg.add_arg(obj.into_arg());
+        arg.set_string("{conflict: replace}");
+        let opt = Arg::create_term_pair("conflict", "replace");
+        match opt {
+            Ok(pair) => arg.add_opt(pair),
+            Err(err) => arg.set_term(Err(err)),
+        }
 
-        let w = r.db("test")
-            .table("test")
+        let w = r.db(DATABASE)
+            .table(FILE_TABLE)
             .insert(arg)
             .run::<ServerStatus>(conn).unwrap().wait().next().unwrap();
         match w {
             // The server returned the response we were expecting
             Ok(Some(Document::Expected(status))) => {
-                println!("{:?}", status);
+                println!("Ok response - {:?}", status);
             }
             Ok(Some(Document::Unexpected(status))) => {
-                println!("unexpected response from server: {:?}", status);
+                println!("response from server: {:?}", status);
             }
             Ok(None) => {
                 println!("got no documents in the database");
@@ -121,37 +118,51 @@ fn parse_xml_file_info(file: String) -> bool {
             }
         }
 
-
-        /*
-
-        for (key, value) in file.iter() {
-            println!("{}: {}", key, match *value {
-                Json::U64(v) => format!("{} (u64)", v),
-                Json::String(ref v) => format!("{} (string)", v),
-                _ => format!("other")
-            });
-        }
-
         let docs = file.get("Документ").unwrap();
         // println!("object? docs {}", docs.is_array());
         if docs.is_array() {
             match docs.as_array() {
                 Some(docs) => {
                     for item in docs {
-                        /*
-                        for (key, value) in item.as_object().unwrap() {
-                            println!("{}: {}", key, match *value {
-                                Json::U64(v) => format!("{} (u64)", v),
-                                Json::String(ref v) => format!("{} (string)", v),
-                                _ => format!("other")
-                            });
-                        }
-                        */
+                        // println!("Item - {:#?}", item);
                         let body = item.as_object().unwrap().get("$").unwrap().as_object().unwrap();
-                        println!("{:#?}", body);
-                        let swyl = item.as_object().unwrap().get("СвЮЛ").unwrap().as_object().unwrap();
+                        // println!("Write document {:#?}", body);
+                        // let swyl = item.as_object().unwrap().get("СвЮЛ").unwrap().as_object().unwrap();
                         // println!("{:#?}", swyl);
-                        break;
+                        // break;
+                        let doc = item;
+                        let obj: Value = serde_json::from_str(doc.to_string().as_str()).unwrap();
+                        println!("Save document with {:#?}", obj["$"]);
+                        // println!("data - {:#?}", arg);
+                         let mut arg = Arg::new();
+                         arg.add_arg(obj.into_arg());
+                        // arg.set_string("{conflict: replace}");
+                        //let opt = Arg::create_term_pair("conflict", "replace");
+                        //match opt {
+                        //    Ok(pair) => arg.add_opt(pair),
+                        //    Err(err) => arg.set_term(Err(err)),
+                        //}
+
+                        let w = r.db(DATABASE)
+                            .table(DOCS_TABLE)
+                            .insert(arg)
+                            .run::<WriteStatus>(conn);
+                        match w.unwrap().wait().next().unwrap() {
+                            // The server returned the response we were expecting
+                            Ok(Some(Document::Expected(status))) => {
+                                println!("Ok response - {:?}", status);
+                            }
+                            Ok(Some(Document::Unexpected(status))) => {
+                                println!("response from server: {:?}", status);
+                            }
+                            Ok(None) => {
+                                println!("got no documents in the database");
+                            }
+                            // Oops! We ran into an error
+                            Err(error) => {
+                                println!("error: {:?}", error);
+                            }
+                        }
                     }
                 }
                 None => {
@@ -162,7 +173,7 @@ fn parse_xml_file_info(file: String) -> bool {
             let body = docs.as_object().unwrap().get("$").unwrap().as_object().unwrap();
             println!("{:#?}", body);
         }
-        */
+
     true
     }
 
@@ -205,7 +216,7 @@ fn main() {
     }
     */
     println!("Check database...");
-    let table = r.db("test")
+    let table = r.db(DATABASE)
         .table_list()
         .run::<ServerStatus>(conn);
 
@@ -218,7 +229,7 @@ fn main() {
         Ok(Some(Document::Unexpected(status))) => {
             println!("Done: {:?}", status);
             if status.is_array() {
-                let index = status.as_array().unwrap().iter().position(|r| r == "test");
+                let index = status.as_array().unwrap().iter().position(|r| r == FILE_TABLE);
                 match index {
                     Some(ok) => false,
                     None => true
@@ -239,10 +250,20 @@ fn main() {
         }
     };
     if is_new {
-        println!("Database test don`t have a table test");
+        println!("Database test don`t have a tables");
         println!("Creating... ");
-        match r.db("test")
-            .table_create("test")
+        //let arg = "{primaryKey: \"ИдФайл\"}";
+        let mut arg = Arg::new();
+        arg.add_arg(FILE_TABLE.into_arg());
+        arg.set_string("{primary_key: ИдФайл}");
+        let opt = Arg::create_term_pair("primary_key", "ИдФайл");
+        match opt {
+            Ok(pair) => arg.add_opt(pair),
+            Err(err) => arg.set_term(Err(err)),
+        }
+
+        match r.db(DATABASE)
+            .table_create(arg)
             .run::<ServerStatus>(conn).unwrap().wait().next().unwrap() {
             // The server returned the response we were expecting
             Ok(Some(Document::Expected(status))) => {
@@ -256,7 +277,35 @@ fn main() {
             }
             // Oops! We ran into an error
             Err(error) => {
-                println!("error: {}", error);
+                println!("error: {:?}", error);
+                exit(1)
+            }
+        }
+        let mut arg = Arg::new();
+        arg.add_arg(DOCS_TABLE.into_arg());
+        arg.set_string("{durably: soft}");
+        let opt = Arg::create_term_pair("durably", "soft");
+        match opt {
+            Ok(pair) => arg.add_opt(pair),
+            Err(err) => arg.set_term(Err(err)),
+        }
+        match r.db(DATABASE)
+            .table_create(arg)
+            .run::<ServerStatus>(conn).unwrap().wait().next().unwrap() {
+            // The server returned the response we were expecting
+            Ok(Some(Document::Expected(status))) => {
+                println!("{:?}", status);
+            }
+            Ok(Some(Document::Unexpected(status))) => {
+                println!("Done: {:?}", status);
+            }
+            Ok(None) => {
+                println!("got no documents in the database");
+            }
+            // Oops! We ran into an error
+            Err(error) => {
+                println!("error: {:?}", error);
+                exit(1)
             }
         }
     } else {
